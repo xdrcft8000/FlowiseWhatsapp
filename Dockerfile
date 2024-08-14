@@ -33,8 +33,11 @@ WORKDIR /usr/src/fastapi
 # Copy FastAPI source code
 COPY ./fastapi .
 
-# Install FastAPI dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Create a virtual environment for Python dependencies
+RUN python3 -m venv /usr/src/fastapi/venv
+
+# Activate the virtual environment and install FastAPI dependencies
+RUN /usr/src/fastapi/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Expose the ports for Flowise and FastAPI
 EXPOSE 3000 8000
@@ -57,7 +60,7 @@ RUN echo "module.exports = { \
     }, \
     { \
       name: 'fastapi', \
-      script: 'uvicorn', \
+      script: '/usr/src/fastapi/venv/bin/uvicorn', \
       args: 'main:app --host 0.0.0.0 --port 8000', \
       cwd: '/usr/src/fastapi', \
       env: { \
