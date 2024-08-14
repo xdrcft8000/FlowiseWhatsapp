@@ -20,6 +20,8 @@ import { sanitizeMiddleware, getCorsOptions, getAllowedIframeOrigins } from './u
 import { Telemetry } from './utils/telemetry'
 import flowiseApiV1Router from './routes'
 import errorHandlerMiddleware from './middlewares/errors'
+import { createProxyMiddleware } from 'http-proxy-middleware';
+
 
 declare global {
     namespace Express {
@@ -146,6 +148,15 @@ export class App {
                 } else next()
             })
         }
+
+        this.app.use('/fo/api', createProxyMiddleware({
+            target: 'http://localhost:8000', // Assuming FastAPI is running on port 8000
+            changeOrigin: true,
+            pathRewrite: {
+                '^/fo/api': '' // Remove the /fo/api prefix when forwarding to FastAPI
+            }
+        }));
+
 
         this.app.use('/api/v1', flowiseApiV1Router)
 
