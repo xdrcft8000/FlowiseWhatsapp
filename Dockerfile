@@ -2,9 +2,10 @@
 FROM node:20-alpine
 
 # Install necessary packages
-RUN apk add --update libc6-compat python3 make g++
-RUN apk add --no-cache build-base cairo-dev pango-dev
-RUN apk add --no-cache chromium
+RUN apk add --update libc6-compat python3 make g++ \
+    && apk add --no-cache build-base cairo-dev pango-dev \
+    && apk add --no-cache chromium \
+    && apk add --no-cache py3-pip
 
 # Install PNPM globally
 RUN npm install -g pnpm
