@@ -120,12 +120,14 @@ async def webhook(request: Request):
 @app.get("/whatsapp/webhook")
 async def verify_webhook(request: Request):
     logging.info('Verifying webhook', WEBHOOK_VERIFY_TOKEN)
+    print('Verifying webhook', WEBHOOK_VERIFY_TOKEN)
     mode = request.query_params.get("hub.mode")
     token = request.query_params.get("hub.verify_token")
     challenge = request.query_params.get("hub.challenge")
 
     if mode == "subscribe" and token == WEBHOOK_VERIFY_TOKEN:
         print("Webhook verified successfully!")
+        print('returning challenge:', challenge)
         return challenge
     else:
         raise HTTPException(status_code=403, detail="Forbidden")
