@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Query
 from pydantic import BaseModel
 import httpx
 import os
@@ -6,12 +6,12 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import re
 import time
-from dotenv import load_dotenv
-
+import logging
+# from dotenv import load_dotenv
+# load_dotenv()
 
 app = FastAPI()
 
-load_dotenv()
 
 WEBHOOK_VERIFY_TOKEN = os.getenv("WEBHOOK_VERIFY_TOKEN")
 GRAPH_API_TOKEN = os.getenv("GRAPH_API_TOKEN")
@@ -28,6 +28,7 @@ service_account_info = {
     "auth_provider_x509_cert_url": os.getenv("google_auth_provider_x509_cert_url"),
     "client_x509_cert_url": os.getenv("google_client_x509_cert_url"),
 }
+logging.info(service_account_info)
 credentials = service_account.Credentials.from_service_account_info(service_account_info)
 drive_service = build('drive', 'v3', credentials=credentials)
 
@@ -38,7 +39,7 @@ def extract_folder_id_from_url(folder_url: str) -> str:
 @app.post("/gdrive/webhook")
 async def drive_webhook(request: Request):
     body = await request.json()
-    print('Webhook received:', body)
+    logging.info('Webhook received:', body)
     if body.get("resourceId"):
         print('Change detected in resource ID:', body["resourceId"])
     return {"status": "received"}
@@ -53,13 +54,14 @@ async def setup_watch(data: SetupWatchRequest):
     if not folder_id:
         raise HTTPException(status_code=400, detail="Invalid folder_url provided")
 
+    logging.info('Setting up watch for folder:', data.folder_url)
     try:
         watch_response = drive_service.files().watch(
             fileId=folder_id,
             body={
                 "id": f"drive-watch-{int(time.time())}",
                 "type": "web_hook",
-                "address": "https://whatsappai-f2f3.onrender.com/fo/api/gdrive/webhook",  # Replace with your actual webhook URL
+                "address": "https://whatsappai-f2f3.onrender.com/fo/api/gdrive/webhook",
             },
         ).execute()
 
@@ -116,14 +118,18 @@ async def webhook(request: Request):
     return {"status": "success"}
 
 @app.get("/whatsapp/webhook")
-async def verify_webhook(hub_mode: str, hub_verify_token: str, hub_challenge: str):
+async def verify_webhook(
+    hub_mode: str = Query(..., alias="hub.mode"),
+    hub_verify_token: str = Query(..., alias="hub.verify_token"),
+    hub_challenge: str = Query(..., alias="hub.challenge")
+):
     if hub_mode == "subscribe" and hub_verify_token == WEBHOOK_VERIFY_TOKEN:
         print("Webhook verified successfully!")
         return hub_challenge
     else:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-@app.get("")
+@app.get("/")
 async def root():
     return {"message": "Nothing to see here. Checkout README.md to start."}
 
