@@ -104,3 +104,9 @@
 ## S/MIME message
 *.smime
 *.vsix
+
+
+## fastapi
+fastapi/.venv/
+fastapi/.vscode/
+fastapi/__pycache__/
