@@ -7,6 +7,8 @@ from googleapiclient.discovery import build
 import re
 import time
 import logging
+from fastapi.responses import Response
+
 # from dotenv import load_dotenv
 # load_dotenv()
 
@@ -128,7 +130,9 @@ async def verify_webhook(request: Request):
     if mode == "subscribe" and token == WEBHOOK_VERIFY_TOKEN:
         print("Webhook verified successfully!")
         print('returning challenge:', challenge)
-        return challenge
+        res = Response(content=challenge, media_type="text/plain")
+        print(res.body)
+        return res
     else:
         raise HTTPException(status_code=403, detail="Forbidden")
     
