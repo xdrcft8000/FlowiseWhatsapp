@@ -76,47 +76,50 @@ async def setup_watch(data: SetupWatchRequest):
 @app.post("/whatsapp/webhook")
 async def webhook(request: Request):
     print('webhook post')
-    body = await request.json()
-    print(f"Incoming webhook message: {body}")
-    message = body.get("entry", [])[0].get("changes", [])[0].get("value", {}).get("messages", [])[0]
-    print(message)
-    if message and message.get("type") == "text":
-        business_phone_number_id = body["entry"][0]["changes"][0]["value"]["metadata"]["phone_number_id"]
-        prompt = {"question": message["text"]["body"]}
+    try:
+        body = await request.json()
+        print(f"Incoming webhook message: {body}")
+        message = body.get("entry", [])[0].get("changes", [])[0].get("value", {}).get("messages", [])[0]
+        print(message)
+        if message and message.get("type") == "text":
+            business_phone_number_id = body["entry"][0]["changes"][0]["value"]["metadata"]["phone_number_id"]
+            prompt = {"question": message["text"]["body"]}
 
-        try:
-            flowise_response = await httpx.post(
-                "http://localhost:3000/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
-                json=prompt,
-                headers={"Content-Type": "application/json"},
-            )
+            try:
+                flowise_response = await httpx.post(
+                    "http://localhost:3000/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
+                    json=prompt,
+                    headers={"Content-Type": "application/json"},
+                )
 
-            response_text = f"Here's a joke about '{message['text']['body']}': {flowise_response.json()['text']}"
+                response_text = f"Here's a joke about '{message['text']['body']}': {flowise_response.json()['text']}"
 
-            await httpx.post(
-                f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
-                headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
-                json={
-                    "messaging_product": "whatsapp",
-                    "to": message["from"],
-                    "text": {"body": response_text},
-                    "context": {"message_id": message["id"]},
-                }
-            )
+                await httpx.post(
+                    f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
+                    headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
+                    json={
+                        "messaging_product": "whatsapp",
+                        "to": message["from"],
+                        "text": {"body": response_text},
+                        "context": {"message_id": message["id"]},
+                    }
+                )
 
-            await httpx.post(
-                f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
-                headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
-                json={
-                    "messaging_product": "whatsapp",
-                    "status": "read",
-                    "message_id": message["id"],
-                }
-            )
-        except Exception as e:
-            print("Error querying the API:", str(e))
-            raise HTTPException(status_code=500, detail="Error querying the API")
-
+                await httpx.post(
+                    f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
+                    headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
+                    json={
+                        "messaging_product": "whatsapp",
+                        "status": "read",
+                        "message_id": message["id"],
+                    }
+                )
+            except Exception as e:
+                print("Error querying the API:", str(e))
+                raise HTTPException(status_code=500, detail="Error querying the API")
+    except Exception as e:
+        print(f"Error processing the message:{e}")
+        raise HTTPException(status_code=500, detail="Error processing the message")
     return {"status": "success"}
 
 @app.get("/whatsapp/webhook")
