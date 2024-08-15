@@ -76,6 +76,7 @@ async def setup_watch(data: SetupWatchRequest):
 @app.post("/whatsapp/webhook")
 async def webhook(request: Request):
     print('webhook post')
+    print(request.json())
     body = await request.json()
     print("Incoming webhook message:", body)
     logging.info('Incoming webhook message:', body)
@@ -88,11 +89,11 @@ async def webhook(request: Request):
 
         try:
             flowise_response = await httpx.post(
-                "https://whatsappai-f2f3.onrender.com/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
+                "http://localhost:3000/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
                 json=prompt,
                 headers={"Content-Type": "application/json"},
             )
-
+            
             response_text = f"Here's a joke about '{message['text']['body']}': {flowise_response.json()['text']}"
 
             await httpx.post(
