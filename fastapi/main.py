@@ -76,13 +76,10 @@ async def setup_watch(data: SetupWatchRequest):
 @app.post("/whatsapp/webhook")
 async def webhook(request: Request):
     print('webhook post')
-    print(request.json())
     body = await request.json()
-    print("Incoming webhook message:", body)
-    logging.info('Incoming webhook message:', body)
-
+    print(f"Incoming webhook message: {body}")
     message = body.get("entry", [])[0].get("changes", [])[0].get("value", {}).get("messages", [])[0]
-    
+    print(message)
     if message and message.get("type") == "text":
         business_phone_number_id = body["entry"][0]["changes"][0]["value"]["metadata"]["phone_number_id"]
         prompt = {"question": message["text"]["body"]}
@@ -93,7 +90,7 @@ async def webhook(request: Request):
                 json=prompt,
                 headers={"Content-Type": "application/json"},
             )
-            
+
             response_text = f"Here's a joke about '{message['text']['body']}': {flowise_response.json()['text']}"
 
             await httpx.post(
