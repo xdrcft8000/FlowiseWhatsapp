@@ -75,8 +75,10 @@ async def setup_watch(data: SetupWatchRequest):
 
 @app.post("/whatsapp/webhook")
 async def webhook(request: Request):
+    print('webhook post')
     body = await request.json()
     print("Incoming webhook message:", body)
+    logging.info('Incoming webhook message:', body)
 
     message = body.get("entry", [])[0].get("changes", [])[0].get("value", {}).get("messages", [])[0]
     
