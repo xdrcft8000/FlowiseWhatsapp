@@ -112,9 +112,10 @@ async def setup_watch(data: SetupWatchRequest):
         raise HTTPException(status_code=500, detail="Error setting up watch")
 
 @app.post("/whatsapp/webhook")
-async def webhook(body: WhatsAppWebhookBody):
+async def webhook(request: Request):
     print('webhook post')
     # Attempt to read the Request
+    body = await request.json()
     print(body)
     try:
         message = body.entry[0].changes[0].value.messages[0]
