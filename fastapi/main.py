@@ -86,14 +86,21 @@ def extract_folder_id_from_url(folder_url: str) -> str:
 async def drive_webhook(request: Request):
     print('drive webhook post')
     try:
+        # Attempt to read the request as JSON
         data = await request.json()
-        print(data)
+        print("Received JSON:", data)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid JSON payload {e}")
-    logging.info('Webhook received:', request.root)
-    if request.root["resourceId"]:
-        print('Change detected in resource ID:', request.root["resourceId"])
-    return {"status": "received"}
+        # If JSON parsing fails, check if there might be another reason (like headers-only request)
+        data = {}
+        print(f"Request is not JSON. Error: {e}")
+        
+    # Log the headers or any data you might have
+    logging.info('Webhook received:', request.headers)
+    
+    # Check the important header that might indicate changes
+    
+    return {"status": "received", "data": data}
+
 
 class SetupWatchRequest(BaseModel):
     folder_url: str
