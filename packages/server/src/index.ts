@@ -41,6 +41,15 @@ export class App {
 
     constructor() {
         this.app = express()
+
+        this.app.use('/fo/api', createProxyMiddleware({
+            target: 'http://localhost:8000', // Assuming FastAPI is running on port 8000
+            changeOrigin: true,
+            pathRewrite: {
+                '^/fo/api': '' // Remove the /fo/api prefix when forwarding to FastAPI
+            }
+        }));
+
     }
 
     async initDatabase() {
@@ -61,17 +70,17 @@ export class App {
 
             // Initialize API keys
             await getAPIKeys()
-
+            
             // Initialize encryption key
             await getEncryptionKey()
-
+            
             // Initialize Rate Limit
             const AllChatFlow: IChatFlow[] = await getAllChatFlow()
             await initializeRateLimiter(AllChatFlow)
-
+            
             // Initialize cache pool
             this.cachePool = new CachePool()
-
+            
             // Initialize telemetry
             this.telemetry = new Telemetry()
             logger.info('📦 [server]: Data Source has been initialized!')
@@ -79,7 +88,7 @@ export class App {
             logger.error('❌ [server]: Error during Data Source initialization:', error)
         }
     }
-
+    
     async config(socketIO?: Server) {
         // Limit is needed to allow sending/receiving base64 encoded string
         const flowise_file_size_limit = process.env.FLOWISE_FILE_SIZE_LIMIT || '50mb'
@@ -87,10 +96,10 @@ export class App {
         this.app.use(express.urlencoded({ limit: flowise_file_size_limit, extended: true }))
         if (process.env.NUMBER_OF_PROXIES && parseInt(process.env.NUMBER_OF_PROXIES) > 0)
             this.app.set('trust proxy', parseInt(process.env.NUMBER_OF_PROXIES))
-
+        
         // Allow access from specified domains
         this.app.use(cors(getCorsOptions()))
-
+        
         // Allow embedding from specified domains.
         this.app.use((req, res, next) => {
             const allowedOrigins = getAllowedIframeOrigins()
@@ -149,13 +158,6 @@ export class App {
             })
         }
 
-        this.app.use('/fo/api', createProxyMiddleware({
-            target: 'http://localhost:8000', // Assuming FastAPI is running on port 8000
-            changeOrigin: true,
-            pathRewrite: {
-                '^/fo/api': '' // Remove the /fo/api prefix when forwarding to FastAPI
-            }
-        }));
 
 
         this.app.use('/api/v1', flowiseApiV1Router)
