@@ -37,8 +37,6 @@ service_account_info = {
     "auth_provider_x509_cert_url": os.getenv("google_auth_provider_x509_cert_url"),
     "client_x509_cert_url": os.getenv("google_client_x509_cert_url"),
 }
-credentials = service_account.Credentials.from_service_account_info(service_account_info)
-drive_service = build('drive', 'v3', credentials=credentials)
 
 def extract_folder_id_from_url(folder_url: str) -> str:
     match = re.search(r'[-\w]{25,}', folder_url)
@@ -58,6 +56,8 @@ class SetupWatchRequest(BaseModel):
 @app.post("/gdrive/setup-watch")
 async def setup_watch(data: SetupWatchRequest):
     folder_id = extract_folder_id_from_url(data.folder_url)
+    credentials = service_account.Credentials.from_service_account_info(service_account_info)
+    drive_service = build('drive', 'v3', credentials=credentials)
 
     if not folder_id:
         raise HTTPException(status_code=400, detail="Invalid folder_url provided")
@@ -81,14 +81,15 @@ async def setup_watch(data: SetupWatchRequest):
 
 @app.post("/whatsapp/webhook")
 async def webhook(request: WebhookRequest):
-    print('webhook post')
-    # Attempt to read the Request
-    try:
-        print(f"{request.model_dump_json()}")
-    except Exception as e:
-        print(f"Failed to parse JSON: {e}")
-        raise HTTPException(status_code=400, detail="Invalid JSON")
-    return {"status": "success"}
+    return {"content": request} 
+    # print('webhook post')
+    # # Attempt to read the Request
+    # try:
+    #     print(f"{request}")
+    # except Exception as e:
+    #     print(f"Failed to parse JSON: {e}")
+    #     raise HTTPException(status_code=400, detail="Invalid JSON")
+    # return {"status": "success"}
     # Validate that 'entry' exists in the body
     # if "entry" not in body or not body["entry"]:
     #     raise HTTPException(status_code=400, detail="Missing 'entry' in webhook data")
