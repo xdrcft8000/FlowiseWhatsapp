@@ -9,13 +9,13 @@ import time
 import logging
 from fastapi.responses import Response
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class Text(BaseModel):
     body: str
 
 class Message(BaseModel):
-    from_: str
+    from_: str = Field(..., alias='from')
     id: str
     timestamp: str
     text: Text
