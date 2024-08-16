@@ -127,37 +127,41 @@ async def webhook(body: WhatsAppWebhookBody):
         prompt = {"question": message.text.body}
         print(f"Received message: {message.text.body}")
         try:
-            # Call to external service
-            flowise_response = await httpx.post(
-                "http://localhost:10000/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
-                json=prompt,
-                headers={"Content-Type": "application/json"},
-            )
-            flowise_data = flowise_response.json()
-            print(f"Response from Flowise: {flowise_data}")
+            # Use an async client to make HTTP requests
+            async with httpx.AsyncClient() as client:
+                # Call to external service
+                print("calling flowise")
+                response = await client.post(
+                    "http://localhost:10000/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
+                    json=prompt,
+                    headers={"Content-Type": "application/json"},
+                )
+                print('flowise called')
+                flowise_data = response.json()
+                print(f"Response from Flowise: {flowise_data}")
 
-            # Send a reply to the user
-            await httpx.post(
-                f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
-                headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
-                json={
-                    "messaging_product": "whatsapp",
-                    "to": message.from_,
-                    "text": {"body": f"Here's a joke about '{message.text.body}': {flowise_data['text']}"},
-                    "context": {"message_id": message.id},
-                }
-            )
+                # Send a reply to the user
+                await client.post(
+                    f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
+                    headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
+                    json={
+                        "messaging_product": "whatsapp",
+                        "to": message.from_,
+                        "text": {"body": f"Here's a joke about '{message.text.body}': {flowise_data['text']}"},
+                        "context": {"message_id": message.id},
+                    }
+                )
 
-            # Mark the incoming message as read
-            await httpx.post(
-                f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
-                headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
-                json={
-                    "messaging_product": "whatsapp",
-                    "status": "read",
-                    "message_id": message.id,
-                }
-            )
+                # Mark the incoming message as read
+                await client.post(
+                    f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
+                    headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
+                    json={
+                        "messaging_product": "whatsapp",
+                        "status": "read",
+                        "message_id": message.id,
+                    }
+                )
 
         except Exception as e:
             print("Error querying the API:", str(e))
