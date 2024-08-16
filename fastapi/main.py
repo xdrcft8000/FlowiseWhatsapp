@@ -80,7 +80,7 @@ async def webhook(request: Request):
     try:
         # Attempt to parse the JSON from the request
         try:
-            body = request.body()
+            body = await request.body()
             print(f"Incoming webhook message: {body}")
         except Exception as e:
             print(f"Failed to parse JSON: {e}")
