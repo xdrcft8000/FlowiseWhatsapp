@@ -76,10 +76,11 @@ async def setup_watch(data: SetupWatchRequest):
 @app.post("/whatsapp/webhook")
 async def webhook(request: Request):
     print('webhook post')
+    print(request)
     try:
         # Attempt to parse the JSON from the request
         try:
-            body = await request.json()
+            body = request.body()
             print(f"Incoming webhook message: {body}")
         except Exception as e:
             print(f"Failed to parse JSON: {e}")
