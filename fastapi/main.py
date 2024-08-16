@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import FastAPI, Request, HTTPException, Query
 from pydantic import BaseModel
 import httpx
@@ -76,7 +77,8 @@ async def setup_watch(data: SetupWatchRequest):
 @app.post("/whatsapp/webhook")
 async def webhook(request: Request):
     print('webhook post')
-    
+    await asyncio.sleep(1)
+    print('slept for 1 sec')
     # Attempt to parse the JSON from the request
     try:
         body = await request.json()
