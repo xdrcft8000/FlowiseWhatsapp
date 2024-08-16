@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import FastAPI, Request, HTTPException, Query
+from fastapi import FastAPI, Header, Request, HTTPException, Query
 import httpx
 import os
 from google.oauth2 import service_account
@@ -7,7 +7,7 @@ from googleapiclient.discovery import build
 import re
 import time
 import logging
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, RootModel
 
@@ -83,17 +83,21 @@ def extract_folder_id_from_url(folder_url: str) -> str:
 
 
 @app.post("/gdrive/webhook")
-async def drive_webhook(request: Request):
+async def drive_webhook(
+    request: Request,
+    x_goog_resource_id: str = Header(None)  # This will be None if the header is not present
+):
     print('drive webhook post')
     try:
-        # Attempt to read the request as JSON
-        data = await request.json()
-        print("Received JSON:", data)
+        print('x_goog_resource_id:', x_goog_resource_id)
+    # Check if the request has a body
+        if request.headers.get("Content-Length") == "0" or not request.headers.get("Content-Type"):
+            # Handle empty request case
+            print("Received an empty request")
+            return JSONResponse(content={"status": "empty request"}, status_code=200)
     except Exception as e:
-        # If JSON parsing fails, check if there might be another reason (like headers-only request)
-        data = {}
-        print(f"Request is not JSON. Error: {e}")
-        
+        print('Error:', str(e))
+        return JSONResponse(content={"status": "error"}, status_code=500)
     # Log the headers or any data you might have
     logging.info('Webhook received:', request.headers)
     
