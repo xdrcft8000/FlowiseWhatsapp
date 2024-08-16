@@ -1,6 +1,5 @@
 import asyncio
 from fastapi import FastAPI, Request, HTTPException, Query
-from pydantic import BaseModel
 import httpx
 import os
 from google.oauth2 import service_account
@@ -9,6 +8,13 @@ import re
 import time
 import logging
 from fastapi.responses import Response
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
+
+class WebhookRequest(BaseModel):
+    field: str
+    value: Dict[str, Any]  # Allows for any kind of nested data in 'value'
+
 
 # from dotenv import load_dotenv
 # load_dotenv()
@@ -31,7 +37,6 @@ service_account_info = {
     "auth_provider_x509_cert_url": os.getenv("google_auth_provider_x509_cert_url"),
     "client_x509_cert_url": os.getenv("google_client_x509_cert_url"),
 }
-logging.info(service_account_info)
 credentials = service_account.Credentials.from_service_account_info(service_account_info)
 drive_service = build('drive', 'v3', credentials=credentials)
 
@@ -75,18 +80,15 @@ async def setup_watch(data: SetupWatchRequest):
         raise HTTPException(status_code=500, detail="Error setting up watch")
 
 @app.post("/whatsapp/webhook")
-async def webhook(request: Request):
+async def webhook(request: WebhookRequest):
     print('webhook post')
-    await asyncio.sleep(1)
-    print('slept for 1 sec')
-    # Attempt to parse the JSON from the request
+    # Attempt to read the Request
     try:
-        body = await request.json()
-        print(f"Incoming webhook message: {body}")
+        print(f"{request.model_dump_json()}")
     except Exception as e:
         print(f"Failed to parse JSON: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON")
-
+    return {"status": "success"}
     # Validate that 'entry' exists in the body
     if "entry" not in body or not body["entry"]:
         raise HTTPException(status_code=400, detail="Missing 'entry' in webhook data")
