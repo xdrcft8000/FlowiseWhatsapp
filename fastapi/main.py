@@ -18,16 +18,19 @@ class Message(BaseModel):
     from_: str
     id: str
     timestamp: str
+    text: Text
     type: str
-    text: Optional[Text]
+
+class Profile(BaseModel):
+    name: str
+
+class Contact(BaseModel):
+    profile: Profile
+    wa_id: str
 
 class Metadata(BaseModel):
     display_phone_number: str
     phone_number_id: str
-
-class Contact(BaseModel):
-    profile: dict
-    wa_id: str
 
 class Value(BaseModel):
     messaging_product: str
@@ -46,7 +49,6 @@ class Entry(BaseModel):
 class WhatsAppWebhookBody(BaseModel):
     object: str
     entry: List[Entry]
-
 
 # from dotenv import load_dotenv
 # load_dotenv()
@@ -112,11 +114,9 @@ async def setup_watch(data: SetupWatchRequest):
         raise HTTPException(status_code=500, detail="Error setting up watch")
 
 @app.post("/whatsapp/webhook")
-async def webhook(request: Request):
+async def webhook(body: WhatsAppWebhookBody):
     print('webhook post')
     # Attempt to read the Request
-    body = await request.json()
-    print(body)
     try:
         message = body.entry[0].changes[0].value.messages[0]
     except IndexError:
@@ -125,11 +125,11 @@ async def webhook(request: Request):
     if message.type == "text":
         business_phone_number_id = body.entry[0].changes[0].value.metadata.phone_number_id
         prompt = {"question": message.text.body}
-
+        print(f"Received message: {message.text.body}")
         try:
             # Call to external service
             flowise_response = await httpx.post(
-                "https://whatsappai-f2f3.onrender.com/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
+                "http://localhost:10000/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
                 json=prompt,
                 headers={"Content-Type": "application/json"},
             )
