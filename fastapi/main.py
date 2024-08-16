@@ -9,7 +9,7 @@ import time
 import logging
 from fastapi.responses import Response
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 class Text(BaseModel):
     body: str
@@ -50,6 +50,10 @@ class WhatsAppWebhookBody(BaseModel):
     object: str
     entry: List[Entry]
 
+
+class AnyRequestModel(RootModel[Dict[str, Any]]):
+    pass
+    
 # from dotenv import load_dotenv
 # load_dotenv()
 
@@ -76,18 +80,19 @@ def extract_folder_id_from_url(folder_url: str) -> str:
     match = re.search(r'[-\w]{25,}', folder_url)
     return match.group(0) if match else None
 
+
+
 @app.post("/gdrive/webhook")
-async def drive_webhook(request: Request):
+async def drive_webhook(request: AnyRequestModel):
     print('drive webhook post')
-    print(request)
     try:
-        body = await request.json()
-        print(body)
+        print(request)
+        print(request.root)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON payload {e}")
-    logging.info('Webhook received:', body)
-    if body.get("resourceId"):
-        print('Change detected in resource ID:', body["resourceId"])
+    logging.info('Webhook received:', request.root)
+    if request.root["resourceId"]:
+        print('Change detected in resource ID:', request.root["resourceId"])
     return {"status": "received"}
 
 class SetupWatchRequest(BaseModel):
