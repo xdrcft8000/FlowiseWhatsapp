@@ -78,7 +78,12 @@ def extract_folder_id_from_url(folder_url: str) -> str:
 
 @app.post("/gdrive/webhook")
 async def drive_webhook(request: Request):
-    body = await request.json()
+    print('drive webhook post')
+    print(request)
+    try:
+        body = await request.json()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON payload {e}")
     logging.info('Webhook received:', body)
     if body.get("resourceId"):
         print('Change detected in resource ID:', body["resourceId"])
@@ -96,7 +101,7 @@ async def setup_watch(data: SetupWatchRequest):
     if not folder_id:
         raise HTTPException(status_code=400, detail="Invalid folder_url provided")
 
-    logging.info('Setting up watch for folder:', data.folder_url)
+    print('Setting up watch for folder:', data.folder_url)
     try:
         watch_response = drive_service.files().watch(
             fileId=folder_id,
@@ -117,6 +122,7 @@ async def setup_watch(data: SetupWatchRequest):
 async def webhook(body: WhatsAppWebhookBody):
     print('webhook post')
     # Attempt to read the Request
+    print(body)
     try:
         message = body.entry[0].changes[0].value.messages[0]
     except IndexError:
@@ -130,16 +136,12 @@ async def webhook(body: WhatsAppWebhookBody):
             # Use an async client to make HTTP requests
             async with httpx.AsyncClient() as client:
                 # Call to external service
-                print("calling flowise")
                 response = await client.post(
                     "http://localhost:10000/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
                     json=prompt,
                     headers={"Content-Type": "application/json"},
                 )
-                print('flowise called')
                 flowise_data = response.json()
-                print(f"Response from Flowise: {flowise_data}")
-
                 # Send a reply to the user
                 await client.post(
                     f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
