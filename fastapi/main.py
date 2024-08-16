@@ -11,9 +11,41 @@ from fastapi.responses import Response
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 
-class WebhookRequest(BaseModel):
+class Text(BaseModel):
+    body: str
+
+class Message(BaseModel):
+    from_: str
+    id: str
+    timestamp: str
+    type: str
+    text: Optional[Text]
+
+class Metadata(BaseModel):
+    display_phone_number: str
+    phone_number_id: str
+
+class Contact(BaseModel):
+    profile: dict
+    wa_id: str
+
+class Value(BaseModel):
+    messaging_product: str
+    metadata: Metadata
+    contacts: List[Contact]
+    messages: List[Message]
+
+class Change(BaseModel):
+    value: Value
     field: str
-    value: Dict[str, Any]  # Allows for any kind of nested data in 'value'
+
+class Entry(BaseModel):
+    id: str
+    changes: List[Change]
+
+class WhatsAppWebhookBody(BaseModel):
+    object: str
+    entry: List[Entry]
 
 
 # from dotenv import load_dotenv
@@ -80,78 +112,55 @@ async def setup_watch(data: SetupWatchRequest):
         raise HTTPException(status_code=500, detail="Error setting up watch")
 
 @app.post("/whatsapp/webhook")
-async def webhook(request: WebhookRequest):
+async def webhook(body: WhatsAppWebhookBody):
     print('webhook post')
     # Attempt to read the Request
+    print(body)
     try:
-        print(f"{request}")
-    except Exception as e:
-        print(f"Failed to parse JSON: {e}")
-        raise HTTPException(status_code=400, detail="Invalid JSON")
-    # Validate that 'entry' exists in the body
+        message = body.entry[0].changes[0].value.messages[0]
+    except IndexError:
+        raise HTTPException(status_code=400, detail="Invalid message structure")
 
-    # if "entry" not in body or not body["entry"]:
-    #     raise HTTPException(status_code=400, detail="Missing 'entry' in webhook data")
-    # entry = body["entry"][0]
-    # print(f"Entry: {entry}")
+    if message.type == "text":
+        business_phone_number_id = body.entry[0].changes[0].value.metadata.phone_number_id
+        prompt = {"question": message.text.body}
 
-    # # Validate that 'changes' exists in the entry
-    # changes = entry.get("changes", [])
-    # if not changes:
-    #     raise HTTPException(status_code=400, detail="Missing 'changes' in entry data")
-    # change = changes[0]
-    # print(f"Change: {change}")
+        try:
+            # Call to external service
+            flowise_response = await httpx.post(
+                "https://whatsappai-f2f3.onrender.com/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
+                json=prompt,
+                headers={"Content-Type": "application/json"},
+            )
+            flowise_data = flowise_response.json()
+            print(f"Response from Flowise: {flowise_data}")
 
-    # # Extract the message
-    # message = change.get("value", {}).get("messages", [])[0]
-    # if message:
-    #     print(f"Message received: {message}")
-    #     if message.get("type") == "text":
-    #         print("Message is of type 'text'")
-    #         business_phone_number_id = change["value"]["metadata"]["phone_number_id"]
-    #         prompt = {"question": message["text"]["body"]}
+            # Send a reply to the user
+            await httpx.post(
+                f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
+                headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
+                json={
+                    "messaging_product": "whatsapp",
+                    "to": message.from_,
+                    "text": {"body": f"Here's a joke about '{message.text.body}': {flowise_data['text']}"},
+                    "context": {"message_id": message.id},
+                }
+            )
 
-    #         try:
-    #             # Send the prompt to Flowise
-    #             flowise_response = await httpx.post(
-    #                 "http://localhost:3000/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
-    #                 json=prompt,
-    #                 headers={"Content-Type": "application/json"},
-    #             )
-    #             print(f"Flowise response: {flowise_response.json()}")
+            # Mark the incoming message as read
+            await httpx.post(
+                f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
+                headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
+                json={
+                    "messaging_product": "whatsapp",
+                    "status": "read",
+                    "message_id": message.id,
+                }
+            )
 
-    #             # Create the response text
-    #             response_text = f"Here's a joke about '{message['text']['body']}': {flowise_response.json()['text']}"
-
-    #             # Send the response back to the user via WhatsApp
-    #             await httpx.post(
-    #                 f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
-    #                 headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
-    #                 json={
-    #                     "messaging_product": "whatsapp",
-    #                     "to": message["from"],
-    #                     "text": {"body": response_text},
-    #                     "context": {"message_id": message["id"]},
-    #                 }
-    #             )
-
-    #             # Mark the message as read
-    #             await httpx.post(
-    #                 f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
-    #                 headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
-    #                 json={
-    #                     "messaging_product": "whatsapp",
-    #                     "status": "read",
-    #                     "message_id": message["id"],
-    #                 }
-    #             )
-    #         except Exception as e:
-    #             print("Error querying the Flowise API or sending messages:", str(e))
-    #             raise HTTPException(status_code=500, detail="Error processing the message")
-    #     else:
-    #         print(f"Message type is not 'text': {message.get('type')}")
-    # else:
-    #     print("No message found in the webhook data.")
+        except Exception as e:
+            print("Error querying the API:", str(e))
+            raise HTTPException(status_code=500, detail="Error querying the API")
 
     return {"status": "success"}
 
