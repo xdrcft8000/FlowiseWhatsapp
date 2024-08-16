@@ -82,6 +82,7 @@ async def drive_webhook(request: Request):
     print(request)
     try:
         body = await request.json()
+        print(body)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON payload {e}")
     logging.info('Webhook received:', body)
