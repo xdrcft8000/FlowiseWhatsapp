@@ -81,16 +81,15 @@ async def setup_watch(data: SetupWatchRequest):
 
 @app.post("/whatsapp/webhook")
 async def webhook(request: WebhookRequest):
-    return {"content": request} 
-    # print('webhook post')
-    # # Attempt to read the Request
-    # try:
-    #     print(f"{request}")
-    # except Exception as e:
-    #     print(f"Failed to parse JSON: {e}")
-    #     raise HTTPException(status_code=400, detail="Invalid JSON")
-    # return {"status": "success"}
+    print('webhook post')
+    # Attempt to read the Request
+    try:
+        print(f"{request}")
+    except Exception as e:
+        print(f"Failed to parse JSON: {e}")
+        raise HTTPException(status_code=400, detail="Invalid JSON")
     # Validate that 'entry' exists in the body
+
     # if "entry" not in body or not body["entry"]:
     #     raise HTTPException(status_code=400, detail="Missing 'entry' in webhook data")
     # entry = body["entry"][0]
@@ -154,7 +153,7 @@ async def webhook(request: WebhookRequest):
     # else:
     #     print("No message found in the webhook data.")
 
-    # return {"status": "success"}
+    return {"status": "success"}
 
 @app.get("/whatsapp/webhook")
 async def verify_webhook(request: Request):
