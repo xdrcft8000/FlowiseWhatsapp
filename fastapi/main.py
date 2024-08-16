@@ -83,11 +83,11 @@ def extract_folder_id_from_url(folder_url: str) -> str:
 
 
 @app.post("/gdrive/webhook")
-async def drive_webhook(request: AnyRequestModel):
+async def drive_webhook(request: Request):
     print('drive webhook post')
     try:
-        print(request)
-        print(request.root)
+        data = await request.json()
+        print(data)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON payload {e}")
     logging.info('Webhook received:', request.root)
