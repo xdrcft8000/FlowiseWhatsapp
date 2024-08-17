@@ -99,7 +99,12 @@ async def drive_webhook(
         print('Error:', str(e))
         return JSONResponse(content={"status": "error"}, status_code=500)
     # Log the headers or any data you might have
-    logging.info('Webhook received:', request.headers)
+    try:
+        data = await request.json()
+        print(data)
+    except Exception as e:
+        print('Error:', str(e))
+        return JSONResponse(content={"status": "error"}, status_code=500)
     
     # Check the important header that might indicate changes
     
