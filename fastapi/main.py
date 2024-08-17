@@ -90,11 +90,12 @@ async def drive_webhook(
     print('drive webhook post')
     try:
         print('x_goog_resource_id:', x_goog_resource_id)
+        print(request.headers)
     # Check if the request has a body
         if request.headers.get("Content-Length") == "0" or not request.headers.get("Content-Type"):
             # Handle empty request case
+
             print("Received an empty request")
-            return JSONResponse(content={"status": "empty request"}, status_code=200)
     except Exception as e:
         print('Error:', str(e))
         return JSONResponse(content={"status": "error"}, status_code=500)
