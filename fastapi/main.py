@@ -88,20 +88,18 @@ def init_drive_service():
 async def drive_webhook(
     request: Request,
 ):
+    state = request.headers.get("X-Goog-Resource-State")
     drive = init_drive_service()
-    if request.headers.get("X-Goog-Changed"):
+    if state != "sync":
         print('drive webhook CHANGE notification')
         folder = extract_folder_id_from_url(request.headers.get("X-Goog-resource-uri"))
         print('Folder:', folder)
         folder_id = request.headers.get("X-Goog-Resource-Id")
-        print('Folder ID:', fodler_id)
+        print('Folder ID:', folder_id)
                                             
         try:
             print(request.headers)
-            state = request.headers.get("X-Goog-Resource-State")
-            if state == "sync":
-                print('Sync notification')
-            elif state == "update":
+            if state == "update":
                 print('Update notification')
             elif state == "add":
                 print('Add notification')
