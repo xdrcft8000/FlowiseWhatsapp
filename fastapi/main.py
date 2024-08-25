@@ -91,6 +91,11 @@ async def drive_webhook(
     drive = init_drive_service()
     if request.headers.get("X-Goog-Changed"):
         print('drive webhook CHANGE notification')
+        folder = extract_folder_id_from_url(request.headers.get("X-Goog-resource-uri"))
+        print('Folder:', folder)
+        folder_id = request.headers.get("X-Goog-Resource-Id")
+        print('Folder ID:', fodler_id)
+                                            
         try:
             print(request.headers)
             state = request.headers.get("X-Goog-Resource-State")
@@ -110,9 +115,11 @@ async def drive_webhook(
                 print('Change notification')
             print('the channel expires:', request.headers.get("X-Goog-Channel-Expiration"))
             try:
-                allFiles = drive.files().list().execute()
+                query = f"'{folder_id}' in parents"
+                allFiles = drive.files().list(q=query).execute()
                 for file in allFiles.get("files", []):
-                    print(f'Found file: {file.get("name")}, {file.get("id")}')
+                    print(f'Found file: {file.get("name")}, {file.get("id")}', {file.get("mimeType")})
+
             except Exception as e:
                 print('Error listing files:', str(e))
             return {"status": "received"}
@@ -128,9 +135,6 @@ async def drive_webhook(
             print('Error:', str(e))
             return JSONResponse(content={"status": "error"}, status_code=500)
     
-    
-    return {"status": "received"}
-
 
 class SetupWatchRequest(BaseModel):
     folder_url: str
