@@ -113,7 +113,7 @@ async def drive_webhook(
                 print('Change notification')
             print('the channel expires:', request.headers.get("X-Goog-Channel-Expiration"))
             try:
-                query = f"'{folder_id}' in parents"
+                query = f"'{folder}' in parents"
                 allFiles = drive.files().list(q=query).execute()
                 for file in allFiles.get("files", []):
                     print(f'Found file: {file.get("name")}, {file.get("id")}', {file.get("mimeType")})
