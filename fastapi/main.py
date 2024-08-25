@@ -80,36 +80,56 @@ def extract_folder_id_from_url(folder_url: str) -> str:
     match = re.search(r'[-\w]{25,}', folder_url)
     return match.group(0) if match else None
 
-
+def init_drive_service():
+    credentials = service_account.Credentials.from_service_account_info(service_account_info)
+    return build('drive', 'v3', credentials=credentials)
 
 @app.post("/gdrive/webhook")
 async def drive_webhook(
     request: Request,
-    x_goog_resource_id: str = Header(None)  # This will be None if the header is not present
 ):
-    print('drive webhook post')
-    try:
-        print('x_goog_resource_id:', x_goog_resource_id)
-        print(request.headers)
-    # Check if the request has a body
-        if request.headers.get("Content-Length") == "0" or not request.headers.get("Content-Type"):
-            # Handle empty request case
-
-            print("Received an empty request")
-    except Exception as e:
-        print('Error:', str(e))
-        return JSONResponse(content={"status": "error"}, status_code=500)
-    # Log the headers or any data you might have
-    try:
-        data = await request.json()
-        print(data)
-    except Exception as e:
-        print('Error:', str(e))
-        return JSONResponse(content={"status": "error"}, status_code=500)
+    drive = init_drive_service()
+    if request.headers.get("X-Goog-Changed"):
+        print('drive webhook CHANGE notification')
+        try:
+            print(request.headers)
+            state = request.headers.get("X-Goog-Resource-State")
+            if state == "sync":
+                print('Sync notification')
+            elif state == "update":
+                print('Update notification')
+            elif state == "add":
+                print('Add notification')
+            elif state == "trash":
+                print('Trash notification')
+            elif state == "untrash":
+                print('Untrash notification')
+            elif state == "delete":
+                print('Delete notification')
+            elif state == "change":
+                print('Change notification')
+            print('the channel expires:', request.headers.get("X-Goog-Channel-Expiration"))
+            try:
+                allFiles = drive.files().list().execute()
+                for file in allFiles.get("files", []):
+                    print(f'Found file: {file.get("name")}, {file.get("id")}')
+            except Exception as e:
+                print('Error listing files:', str(e))
+            return {"status": "received"}
+        except Exception as e:
+            print('Error:', str(e))
+            return JSONResponse(content={"status": "error"}, status_code=500)
+    else:
+        print('drive webhook SYNC notification')
+        try:
+            print(request.headers)
+            return {"status": "received"}
+        except Exception as e:
+            print('Error:', str(e))
+            return JSONResponse(content={"status": "error"}, status_code=500)
     
-    # Check the important header that might indicate changes
     
-    return {"status": "received", "data": data}
+    return {"status": "received"}
 
 
 class SetupWatchRequest(BaseModel):
@@ -132,6 +152,7 @@ async def setup_watch(data: SetupWatchRequest):
                 "id": f"drive-watch-{int(time.time())}",
                 "type": "web_hook",
                 "address": "https://whatsappai-f2f3.onrender.com/fo/api/gdrive/webhook",
+                "token": "1234",
             },
         ).execute()
 
@@ -140,6 +161,10 @@ async def setup_watch(data: SetupWatchRequest):
     except Exception as e:
         print('Error setting up watch:', str(e))
         raise HTTPException(status_code=500, detail="Error setting up watch")
+
+
+
+
 
 @app.post("/whatsapp/webhook")
 async def webhook(body: WhatsAppWebhookBody):
