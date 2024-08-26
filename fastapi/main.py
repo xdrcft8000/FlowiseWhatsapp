@@ -303,6 +303,7 @@ def init_openai():
 # Current implementation is quicker but not the best way to do it
 
 def convert_ogg_to_wav(ogg_data: bytes) -> BytesIO:
+    print('Converting OGG to WAV')
     try:
         audio = AudioSegment.from_file(BytesIO(ogg_data), format="ogg")
         wav_data = BytesIO()
@@ -315,6 +316,7 @@ def convert_ogg_to_wav(ogg_data: bytes) -> BytesIO:
 
 # Send to OpenAI's API
 async def transcribe_audio(ogg_file: bytes):
+    print('Transcribing audio')
     try:
         openai = init_openai()
         wav_data = convert_ogg_to_wav(ogg_file)
@@ -323,7 +325,7 @@ async def transcribe_audio(ogg_file: bytes):
             file=wav_data,
             response_format="text"
         )
-        print(response.text)
+        print('transcription:', response.text)
         return response.text
     except Exception as e:
         print("Error transcribing audio:", str(e))
@@ -415,6 +417,8 @@ async def webhook(body: WhatsAppWebhookBody):
                 audio_binary_data = await client.get(
                     audio_data['url'],
                     headers={"Authorization": f"Bearer {MOODIFY_WHATSAPP_GRAPH_API_TOKEN}"},)
+                print('audio_binary_data:', audio_binary_data.headers)
+                print('audio_binary_data:', audio_binary_data)
                 text = transcribe_audio(audio_binary_data.content)
                 print(text)
                 return {"status": "success"}
