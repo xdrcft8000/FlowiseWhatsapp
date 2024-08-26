@@ -406,8 +406,7 @@ async def webhook(body: WhatsAppWebhookBody):
                 # Call to external service
                 response = await client.get(
                     f"https://graph.facebook.com/v20.0/{message.audio.id}/",
-                    json=prompt,
-                    headers={"Content-Type": "application/json"},
+                    headers={"Authorization": f"Bearer {MOODIFY_WHATSAPP_GRAPH_API_TOKEN}"},
                 )
                 audio_data = response.json()
                 print(audio_data)
