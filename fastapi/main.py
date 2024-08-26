@@ -10,6 +10,10 @@ import logging
 from fastapi.responses import JSONResponse, Response
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, RootModel
+from supabase import create_client, Client
+url: str = os.environ.get("SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(url, key)
 
 class Text(BaseModel):
     body: str
@@ -54,8 +58,8 @@ class WhatsAppWebhookBody(BaseModel):
 class AnyRequestModel(RootModel[Dict[str, Any]]):
     pass
     
-# from dotenv import load_dotenv
-# load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI()
 
@@ -84,6 +88,34 @@ def init_drive_service():
     credentials = service_account.Credentials.from_service_account_info(service_account_info)
     return build('drive', 'v3', credentials=credentials)
 
+
+
+@app.post('/db/insert')
+async def insert_data(request: Request):
+    print('Inserting data')
+    logging.info('Inserting data')
+    try:
+        request = await request.json()
+        print(request)
+        table = request['table']
+        data = request['data']
+        print('Table:', table)
+        print('title:', data)
+    except Exception as e:
+        print('Error:', str(e))
+        return JSONResponse(content={"status": "error"}, status_code=500)
+    if not table or not data:
+        return JSONResponse(content={"status": "error"}, status_code=400)
+    try:
+        response = supabase.table(table).insert(data).execute()
+        print('Response:', response)
+        return JSONResponse(content={"status": "success", "data": response.data}, status_code=200)
+    except Exception as e:
+        print('Error:', str(e))
+        return JSONResponse(content={"status": "error"}, status_code=500)
+
+
+
 @app.post("/gdrive/webhook")
 async def drive_webhook(
     request: Request,
@@ -91,7 +123,7 @@ async def drive_webhook(
     state = request.headers.get("X-Goog-Resource-State")
     drive = init_drive_service()
     if state != "sync":
-        print('drive webhook CHANGE notification')
+        print(f'drive webhook {state} notification')
         folder = extract_folder_id_from_url(request.headers.get("X-Goog-resource-uri"))
         print('Folder:', folder)
         folder_id = request.headers.get("X-Goog-Resource-Id")
@@ -235,7 +267,89 @@ async def verify_webhook(request: Request):
         raise HTTPException(status_code=403, detail="Forbidden")
     
 
+
+
+
+
+
+
+
+# ++++++++++++++++++++++++++++++
+# ++++++++++ MOODIFY ++++++++++
+# ++++++++++++++++++++++++++++++
+
+
+
+
+
+@app.get("/moodify/whatsapp/webhook")
+async def verify_webhook(request: Request):
+    mode = request.query_params.get("hub.mode")
+    token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge")
+
+    if mode == "subscribe" and token == WEBHOOK_VERIFY_TOKEN:
+        print("Webhook verified successfully!")
+        res = Response(content=challenge, media_type="text/plain")
+        return res
+    else:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+@app.post("/moodify/whatsapp/webhook")
+async def webhook(body: WhatsAppWebhookBody):
+    print('webhook post')
+    # Attempt to read the Request
+    print(body)
+    try:
+        message = body.entry[0].changes[0].value.messages[0]
+    except IndexError:
+        raise HTTPException(status_code=400, detail="Invalid message structure")
+
+    if message.type == "text":
+        business_phone_number_id = body.entry[0].changes[0].value.metadata.phone_number_id
+        prompt = {"question": message.text.body}
+        print(f"Received message: {message.text.body}")
+        try:
+            # Use an async client to make HTTP requests
+            async with httpx.AsyncClient() as client:
+                # Call to external service
+                response = await client.post(
+                    "http://localhost:10000/api/v1/prediction/17bbeae4-f50b-43ca-8eb0-2aeea69d5359",
+                    json=prompt,
+                    headers={"Content-Type": "application/json"},
+                )
+                flowise_data = response.json()
+                # Send a reply to the user
+                await client.post(
+                    f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
+                    headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
+                    json={
+                        "messaging_product": "whatsapp",
+                        "to": message.from_,
+                        "text": {"body": f"Here's a joke about '{message.text.body}': {flowise_data['text']}"},
+                        "context": {"message_id": message.id},
+                    }
+                )
+
+                # Mark the incoming message as read
+                await client.post(
+                    f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
+                    headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
+                    json={
+                        "messaging_product": "whatsapp",
+                        "status": "read",
+                        "message_id": message.id,
+                    }
+                )
+
+        except Exception as e:
+            print("Error querying the API:", str(e))
+            raise HTTPException(status_code=500, detail="Error querying the API")
+
+    return {"status": "success"}
+
+
 @app.get("/")
 async def root():
     return {"message": "Nothing to see here. Checkout README.md to start."}
-
