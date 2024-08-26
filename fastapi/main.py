@@ -64,8 +64,8 @@ class WhatsAppWebhookBody(BaseModel):
 class AnyRequestModel(RootModel[Dict[str, Any]]):
     pass
     
-from dotenv import load_dotenv
-load_dotenv()
+# from dotenv import load_dotenv
+# load_dotenv()
 
 app = FastAPI()
 
@@ -295,7 +295,7 @@ MOODIFY_WHATSAPP_GRAPH_API_TOKEN = os.getenv("MOODIFY_WHATSAPP_GRAPH_API_TOKEN")
 
 
 def init_openai():
-    return OpenAI(os.getenv("OPENAI_API_KEY"))
+    return OpenAI(os.getenv("MOODIFY_OPENAI_API_KEY"))
 
 
 #  SPEECH TO TEXT:
@@ -391,6 +391,7 @@ async def webhook(body: WhatsAppWebhookBody):
                         "message_id": message.id,
                     }
                 )
+                return {"status": "success"}
 
         except Exception as e:
             print("Error querying the API:", str(e))
@@ -425,8 +426,7 @@ async def webhook(body: WhatsAppWebhookBody):
 
     else:
         print('Message type:', message.type)
-
-    return {"status": "success"}
+        return {"status": "success"}
 
 
 @app.get("/")
