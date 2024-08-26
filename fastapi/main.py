@@ -18,12 +18,18 @@ supabase: Client = create_client(url, key)
 class Text(BaseModel):
     body: str
 
-class Message(BaseModel):
-    from_: str = Field(..., alias='from')
+class Audio(BaseModel):
     id: str
-    timestamp: str
-    text: Text
-    type: str
+    mime_type: str
+
+class Message(BaseModel):
+    from_: Optional[str] = Field(None, alias='from')
+    id: Optional[str] = None
+    timestamp: Optional[str] = None
+    text: Optional[Text] = None
+    type: Optional[str] = None
+    audio: Optional[Audio] = None
+
 
 class Profile(BaseModel):
     name: str
@@ -346,6 +352,12 @@ async def webhook(body: WhatsAppWebhookBody):
         except Exception as e:
             print("Error querying the API:", str(e))
             raise HTTPException(status_code=500, detail="Error querying the API")
+    elif message.type == "audio":
+        print('Audio message')
+        print(message.audio.id)
+        print(message.audio.mime_type)
+    else:
+        print('Message type:', message.type)
 
     return {"status": "success"}
 
