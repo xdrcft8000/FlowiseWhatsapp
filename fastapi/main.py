@@ -73,6 +73,7 @@ app = FastAPI()
 WEBHOOK_VERIFY_TOKEN = os.getenv("WEBHOOK_VERIFY_TOKEN")
 GRAPH_API_TOKEN = os.getenv("GRAPH_API_TOKEN")
 
+
 service_account_info = {
     "type": os.getenv("google_type"),
     "project_id": os.getenv("google_project_id"),
@@ -284,7 +285,49 @@ async def verify_webhook(request: Request):
 # ++++++++++ MOODIFY ++++++++++
 # ++++++++++++++++++++++++++++++
 
+from openai import OpenAI
+from pydub import AudioSegment
+from io import BytesIO
 
+
+MOODIFY_WEBHOOK_VERIFY_TOKEN = os.getenv("MOODIFY_WEBHOOK_VERIFY_TOKEN")
+MOODIFY_WHATSAPP_GRAPH_API_TOKEN = os.getenv("MOODIFY_WHATSAPP_GRAPH_API_TOKEN")
+
+
+def init_openai():
+    return OpenAI(os.getenv("OPENAI_API_KEY"))
+
+
+#  SPEECH TO TEXT:
+# The best way to do this is to use a service that supports OGG
+# Current implementation is quicker but not the best way to do it
+
+def convert_ogg_to_wav(ogg_data: bytes) -> BytesIO:
+    try:
+        audio = AudioSegment.from_file(BytesIO(ogg_data), format="ogg")
+        wav_data = BytesIO()
+        audio.export(wav_data, format="wav")
+        wav_data.seek(0)
+        return wav_data
+    except Exception as e:
+        print("Error converting OGG to WAV:", str(e))
+        return None
+
+# Send to OpenAI's API
+async def transcribe_audio(ogg_file: bytes):
+    try:
+        openai = init_openai()
+        wav_data = convert_ogg_to_wav(ogg_file)
+        response = openai.audio.transcriptions.create(
+            model="whisper-1",
+            file=wav_data,
+            response_format="text"
+        )
+        print(response.text)
+        return response.text
+    except Exception as e:
+        print("Error transcribing audio:", str(e))
+        return None
 
 
 
@@ -294,7 +337,7 @@ async def verify_webhook(request: Request):
     token = request.query_params.get("hub.verify_token")
     challenge = request.query_params.get("hub.challenge")
 
-    if mode == "subscribe" and token == WEBHOOK_VERIFY_TOKEN:
+    if mode == "subscribe" and token == MOODIFY_WEBHOOK_VERIFY_TOKEN:
         print("Webhook verified successfully!")
         res = Response(content=challenge, media_type="text/plain")
         return res
@@ -329,7 +372,7 @@ async def webhook(body: WhatsAppWebhookBody):
                 # Send a reply to the user
                 await client.post(
                     f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
-                    headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
+                    headers={"Authorization": f"Bearer {MOODIFY_WHATSAPP_GRAPH_API_TOKEN}"},
                     json={
                         "messaging_product": "whatsapp",
                         "to": message.from_,
@@ -341,7 +384,7 @@ async def webhook(body: WhatsAppWebhookBody):
                 # Mark the incoming message as read
                 await client.post(
                     f"https://graph.facebook.com/v18.0/{business_phone_number_id}/messages",
-                    headers={"Authorization": f"Bearer {GRAPH_API_TOKEN}"},
+                    headers={"Authorization": f"Bearer {MOODIFY_WHATSAPP_GRAPH_API_TOKEN}"},
                     json={
                         "messaging_product": "whatsapp",
                         "status": "read",
@@ -356,6 +399,30 @@ async def webhook(body: WhatsAppWebhookBody):
         print('Audio message')
         print(message.audio.id)
         print(message.audio.mime_type)
+        try:
+            # Use an async client to make HTTP requests
+            async with httpx.AsyncClient() as client:
+                # Call to external service
+                response = await client.get(
+                    f"https://graph.facebook.com/v20.0/{message.audio.id}/",
+                    json=prompt,
+                    headers={"Content-Type": "application/json"},
+                )
+                audio_data = response.json()
+                print(audio_data)
+                print(audio_data['url'])
+
+                audio_binary_data = await client.get(
+                    audio_data['url'],
+                    headers={"Authorization": f"Bearer {MOODIFY_WHATSAPP_GRAPH_API_TOKEN}"},)
+                text = transcribe_audio(audio_binary_data.content)
+                print(text)
+                return {"status": "success"}
+        except Exception as e:
+            print("Error querying the API:", str(e))
+            raise HTTPException(status_code=500, detail="Error getting media location")
+
+
     else:
         print('Message type:', message.type)
 
