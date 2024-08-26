@@ -419,7 +419,7 @@ async def webhook(body: WhatsAppWebhookBody):
                     headers={"Authorization": f"Bearer {MOODIFY_WHATSAPP_GRAPH_API_TOKEN}"},)
                 print('audio_binary_data:', audio_binary_data.headers)
                 print('audio_binary_data:', audio_binary_data)
-                text = transcribe_audio(audio_binary_data.content)
+                text = await transcribe_audio(audio_binary_data.content)
                 print(text)
                 return {"status": "success"}
         except Exception as e:
