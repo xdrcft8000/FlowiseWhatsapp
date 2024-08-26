@@ -20,18 +20,15 @@ ENV NODE_OPTIONS=--max-old-space-size=8192
 # Set the working directory for Flowise
 WORKDIR /usr/src/flowise
 
-# Copy only package.json and install dependencies first
-COPY ./package.json ./pnpm-lock.yaml ./
-RUN pnpm install
-
-# Then copy the rest of the source code and build
+# Copy Flowise source code and install dependencies
 COPY ./ .
-RUN pnpm build
+RUN pnpm install && pnpm build
 
 # Set the working directory for FastAPI
 WORKDIR /usr/src/fastapi
 
-# Create a virtual environment and install Python dependencies
+# Copy FastAPI source code and create a virtual environment for Python dependencies
+COPY ./fastapi .
 RUN python3 -m venv /usr/src/fastapi/venv \
     && /usr/src/fastapi/venv/bin/pip install --no-cache-dir -r requirements.txt
 
