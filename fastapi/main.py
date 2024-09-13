@@ -226,7 +226,7 @@ async def webhook(body: WhatsAppWebhookBody):
             async with httpx.AsyncClient() as client:
                 # Call to external service
                 response = await client.post(
-                    "https://whatsappai-f2f3.onrender.com/chatbot/18448d70-e618-4656-a1d0-45f1902e598d",
+                    "https://whatsappai-f2f3.onrender.com/api/v1/prediction/18448d70-e618-4656-a1d0-45f1902e5",
                     json=prompt,
                     headers={"Content-Type": "application/json"},
                 )
