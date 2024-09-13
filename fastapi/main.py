@@ -230,6 +230,8 @@ async def webhook(body: WhatsAppWebhookBody):
                     json=prompt,
                     headers={"Content-Type": "application/json"},
                 )
+                print(f"Response status: {response.status_code}")
+                print(f"Response content: {response.text}")
                 flowise_data = response.json()
                 # Send a reply to the user
                 await client.post(
@@ -238,7 +240,7 @@ async def webhook(body: WhatsAppWebhookBody):
                     json={
                         "messaging_product": "whatsapp",
                         "to": message.from_,
-                        "text": {"body": f"Here's a joke about '{message.text.body}': {flowise_data['text']}"},
+                        "text": {"body": f"{flowise_data['text']}"},
                         "context": {"message_id": message.id},
                     }
                 )
